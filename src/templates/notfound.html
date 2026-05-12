@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Page Not Found - WOWDrive Bot</title>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+
+			body {
+				font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				min-height: 100vh;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			.container {
+				background: white;
+				border-radius: 20px;
+				box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+				padding: 40px;
+				max-width: 500px;
+				width: 90%;
+				text-align: center;
+			}
+
+			.error-icon {
+				font-size: 6rem;
+				margin-bottom: 20px;
+			}
+
+			h1 {
+				color: #333;
+				margin-bottom: 10px;
+				font-size: 3rem;
+			}
+
+			.error-code {
+				color: #667eea;
+				font-size: 1.2rem;
+				margin-bottom: 20px;
+			}
+
+			.message {
+				color: #666;
+				margin-bottom: 30px;
+				font-size: 1.1rem;
+				line-height: 1.6;
+			}
+
+			.btn {
+				display: inline-block;
+				background: linear-gradient(45deg, #667eea, #764ba2);
+				color: white;
+				padding: 15px 30px;
+				text-decoration: none;
+				border-radius: 50px;
+				font-weight: bold;
+				margin: 10px;
+				transition: transform 0.3s ease;
+			}
+
+			.btn:hover {
+				transform: translateY(-2px);
+			}
+
+			.btn-secondary {
+				background: linear-gradient(45deg, #6c757d, #495057);
+			}
+
+			.suggestions {
+				text-align: left;
+				margin: 30px 0;
+				padding: 20px;
+				background: #f8f9fa;
+				border-radius: 15px;
+			}
+
+			.suggestion {
+				display: flex;
+				align-items: center;
+				margin: 15px 0;
+				padding: 10px;
+			}
+
+			.suggestion-icon {
+				font-size: 1.5rem;
+				margin-right: 15px;
+			}
+
+			.error-details {
+				background: #f8d7da;
+				color: #721c24;
+				padding: 15px;
+				border-radius: 10px;
+				margin: 20px 0;
+				border-left: 4px solid #dc3545;
+				text-align: left;
+				font-family: monospace;
+				font-size: 0.9rem;
+			}
+
+			.footer {
+				margin-top: 30px;
+				padding-top: 20px;
+				border-top: 1px solid #eee;
+				color: #666;
+				font-size: 0.9rem;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<div class="error-icon">🔍</div>
+			<h1>404</h1>
+			<div class="error-code">Page Not Found</div>
+			<div class="message">The page you're looking for doesn't exist or has been moved.</div>
+
+			{% if error %}
+			<div class="error-details">
+				<strong>Error Details:</strong><br />
+				{{ error }}
+			</div>
+			{% endif %}
+
+			<div class="suggestions">
+				<h3>What you can do:</h3>
+				<div class="suggestion">
+					<span class="suggestion-icon">🏠</span>
+					<span>Go back to the home page</span>
+				</div>
+				<div class="suggestion">
+					<span class="suggestion-icon">🔐</span>
+					<span>Try the authentication page</span>
+				</div>
+				<div class="suggestion">
+					<span class="suggestion-icon">🤖</span>
+					<span>Use the Telegram bot instead</span>
+				</div>
+			</div>
+
+			<a href="/" class="btn">🏠 Home</a>
+			<a href="/login" class="btn btn-secondary">🔐 Login</a>
+
+			<div class="footer">
+				<p>
+					<a href="/policy">Privacy Policy</a> |
+					<a href="/terms">Terms of Service</a>
+				</p>
+				<p>WOWDrive Bot - Secure file management</p>
+			</div>
+		</div>
+	</body>
+</html>
