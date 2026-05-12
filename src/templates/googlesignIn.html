@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Google Drive Authentication - WOWDrive Bot</title>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+
+			body {
+				font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				min-height: 100vh;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			.container {
+				background: white;
+				border-radius: 20px;
+				box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+				padding: 40px;
+				max-width: 500px;
+				width: 90%;
+				text-align: center;
+			}
+
+			.status-icon {
+				font-size: 4rem;
+				margin-bottom: 20px;
+			}
+
+			.success {
+				color: #28a745;
+			}
+
+			.error {
+				color: #dc3545;
+			}
+
+			h1 {
+				color: #333;
+				margin-bottom: 20px;
+				font-size: 2rem;
+			}
+
+			.message {
+				color: #666;
+				margin-bottom: 30px;
+				font-size: 1.1rem;
+				line-height: 1.6;
+			}
+
+			.btn {
+				display: inline-block;
+				background: linear-gradient(45deg, #667eea, #764ba2);
+				color: white;
+				padding: 15px 30px;
+				text-decoration: none;
+				border-radius: 50px;
+				font-weight: bold;
+				margin: 10px;
+				transition: transform 0.3s ease;
+			}
+
+			.btn:hover {
+				transform: translateY(-2px);
+			}
+
+			.btn-success {
+				background: linear-gradient(45deg, #28a745, #20c997);
+			}
+
+			.btn-secondary {
+				background: linear-gradient(45deg, #6c757d, #495057);
+			}
+
+			.steps {
+				text-align: left;
+				margin: 30px 0;
+				padding: 20px;
+				background: #f8f9fa;
+				border-radius: 15px;
+			}
+
+			.step {
+				display: flex;
+				align-items: center;
+				margin: 15px 0;
+				padding: 10px;
+			}
+
+			.step-number {
+				background: #667eea;
+				color: white;
+				width: 30px;
+				height: 30px;
+				border-radius: 50%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				margin-right: 15px;
+				font-weight: bold;
+			}
+
+			.error-message {
+				background: #f8d7da;
+				color: #721c24;
+				padding: 15px;
+				border-radius: 10px;
+				margin: 20px 0;
+				border-left: 4px solid #dc3545;
+			}
+
+			.success-message {
+				background: #d4edda;
+				color: #155724;
+				padding: 15px;
+				border-radius: 10px;
+				margin: 20px 0;
+				border-left: 4px solid #28a745;
+			}
+
+			.footer {
+				margin-top: 30px;
+				padding-top: 20px;
+				border-top: 1px solid #eee;
+				color: #666;
+				font-size: 0.9rem;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			{% if success %}
+			<div class="status-icon success">✅</div>
+			<h1>Authentication Successful!</h1>
+			<div class="success-message"><strong>Great!</strong> Your Google Drive account has been successfully connected to WOWDrive Bot.</div>
+			<div class="message">
+				You can now use the bot to upload files directly to your Google Drive. Go back to Telegram and start uploading files!
+			</div>
+			<div class="steps">
+				<div class="step">
+					<div class="step-number">1</div>
+					<span>Go back to your Telegram bot</span>
+				</div>
+				<div class="step">
+					<div class="step-number">2</div>
+					<span>Send any file to upload it to Drive</span>
+				</div>
+				<div class="step">
+					<div class="step-number">3</div>
+					<span>Use /stat to check your storage usage</span>
+				</div>
+			</div>
+			<a href="https://t.me/your_bot_username" class="btn btn-success">🤖 Back to Bot</a>
+			{% else %}
+			<div class="status-icon error">❌</div>
+			<h1>Authentication Failed</h1>
+			<div class="error-message">
+				<strong>Oops!</strong> Something went wrong during the authentication process. {% if error %} <br /><br />Error: {{ error }} {%
+				endif %}
+			</div>
+			<div class="message">
+				Don't worry, you can try again. Make sure you complete the authorization process and don't close the browser window prematurely.
+			</div>
+			<a href="/login" class="btn">🔄 Try Again</a>
+			<a href="/" class="btn btn-secondary">🏠 Home</a>
+			{% endif %}
+
+			<div class="footer">
+				<p>
+					<a href="/policy">Privacy Policy</a> |
+					<a href="/terms">Terms of Service</a>
+				</p>
+				<p>WOWDrive Bot - Secure file management</p>
+			</div>
+		</div>
+	</body>
+</html>
