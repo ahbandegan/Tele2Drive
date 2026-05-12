@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-WOWDrive Bot - Upload files from Telegram to Google Drive
+ربات WOWDrive - آپلود فایل از تلگرام به گوگل درایو
 """
 
 import asyncio
@@ -25,7 +25,7 @@ from telegram.constants import ParseMode
 from config import *
 from drive import GoogleDriveManager
 
-# Configure logging
+# تنظیمات ثبت وقایع
 logger = logging.getLogger(__name__)
 
 
@@ -36,7 +36,7 @@ class UploadTask:
     file_name: str
     file_size: int
     message_id: int
-    status: str = "queued"
+    status: str = "queued"  # queued, uploading, completed, failed
     progress: int = 0
     drive_file_id: Optional[str] = None
     error: Optional[str] = None
@@ -50,11 +50,11 @@ class WOWDriveBot:
         self.throttler = Throttler(
             rate_limit=RATE_LIMIT_REQUESTS, period=RATE_LIMIT_PERIOD)
 
-        # Ensure upload folder exists
+        # ایجاد پوشه آپلود در صورت نیاز
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
     def get_drive_manager(self, user_id: int) -> GoogleDriveManager:
-        """Get or create Drive manager for user"""
+        """دریافت یا ایجاد مدیر درایو برای کاربر"""
         if user_id not in self.user_drive_managers:
             manager = GoogleDriveManager()
             manager.load_credentials_from_file(str(user_id))
@@ -62,9 +62,8 @@ class WOWDriveBot:
         return self.user_drive_managers[user_id]
 
     async def get_auth_url(self, user_id: int) -> Optional[str]:
-        """Get authentication URL for user"""
+        """دریافت لینک احراز هویت برای کاربر"""
         try:
-            # Get the web server URL from environment or use localhost
             web_url = os.getenv('WEB_URL', 'http://localhost:8080')
             async with aiohttp.ClientSession() as session:
                 url = f"{web_url}/auth/{user_id}"
@@ -74,29 +73,29 @@ class WOWDriveBot:
                         if data.get('success'):
                             return data.get('auth_url')
         except Exception as e:
-            logger.error(f"Failed to get auth URL: {e}")
+            logger.error(f"خطا در دریافت لینک احراز هویت: {e}")
         return None
 
     async def check_credentials(self, user_id: int) -> bool:
-        """Check if user has valid credentials"""
+        """بررسی اعتبار کاربر"""
         manager = self.get_drive_manager(user_id)
         return manager.service is not None
 
     async def get_storage_info(self, user_id: int) -> Optional[Dict]:
-        """Get user's Google Drive storage information"""
+        """دریافت اطلاعات فضای ذخیره‌سازی گوگل درایو کاربر"""
         manager = self.get_drive_manager(user_id)
         return manager.get_storage_info()
 
     async def list_recent_files(self, user_id: int, limit: int = 10) -> List[Dict]:
-        """List recent files from user's Google Drive"""
+        """لیست فایل‌های اخیر از گوگل درایو کاربر"""
         manager = self.get_drive_manager(user_id)
         return manager.list_files(limit)
 
     async def upload_file_chunked(self, task: UploadTask, file_path: str) -> bool:
-        """Upload large file using chunked upload with progress tracking"""
+        """آپلود فایل بزرگ با استفاده از آپلود تکه‌تکه و پیگیری پیشرفت"""
         manager = self.get_drive_manager(task.user_id)
         if not manager.service:
-            task.error = "Authentication required. Please use /login first."
+            task.error = "احراز هویت لازم است. لطفاً ابتدا از /login استفاده کنید."
             return False
 
         def progress_callback(progress: int):
@@ -118,23 +117,23 @@ class WOWDriveBot:
                 await self.update_progress_message(task)
                 return True
             else:
-                task.error = "Upload failed"
+                task.error = "آپلود ناموفق بود"
                 task.status = "failed"
                 await self.update_progress_message(task)
                 return False
 
         except Exception as e:
-            logger.error(f"Upload failed for task {task.file_id}: {e}")
+            logger.error(f"آپلود برای فایل {task.file_id} ناموفق بود: {e}")
             task.error = str(e)
             task.status = "failed"
             await self.update_progress_message(task)
             return False
 
     async def upload_file_direct(self, task: UploadTask, file_path: str) -> bool:
-        """Upload small file directly"""
+        """آپلود مستقیم فایل کوچک"""
         manager = self.get_drive_manager(task.user_id)
         if not manager.service:
-            task.error = "Authentication required. Please use /login first."
+            task.error = "احراز هویت لازم است. لطفاً ابتدا از /login استفاده کنید."
             return False
 
         try:
@@ -148,75 +147,74 @@ class WOWDriveBot:
                 await self.update_progress_message(task)
                 return True
             else:
-                task.error = "Upload failed"
+                task.error = "آپلود ناموفق بود"
                 task.status = "failed"
                 await self.update_progress_message(task)
                 return False
 
         except Exception as e:
-            logger.error(f"Direct upload failed for task {task.file_id}: {e}")
+            logger.error(f"آپلود مستقیم برای فایل {task.file_id} ناموفق بود: {e}")
             task.error = str(e)
             task.status = "failed"
             await self.update_progress_message(task)
             return False
 
     async def update_progress_message(self, task: UploadTask):
-        """Update the progress message for an upload task"""
+        """به‌روزرسانی پیام پیشرفت برای تسک آپلود"""
         try:
             if task.status == "queued":
-                text = f"📤 **{task.file_name}**\n\n⏳ Request added to the queue!"
+                text = f"📤 **{task.file_name}**\n\n⏳ درخواست به صف اضافه شد!"
             elif task.status == "uploading":
-                text = f"📤 **{task.file_name}**\n\n🔄 Uploading... {task.progress}%"
+                text = f"📤 **{task.file_name}**\n\n🔄 در حال آپلود... {task.progress}%"
             elif task.status == "completed":
-                text = f"✅ **{task.file_name}**\n\n🎉 Upload completed!\n\n🔗 File ID: `{task.drive_file_id}`"
+                text = f"✅ **{task.file_name}**\n\n🎉 آپلود با موفقیت انجام شد!\n\n🔗 شناسه فایل: `{task.drive_file_id}`"
             elif task.status == "failed":
-                text = f"❌ **{task.file_name}**\n\n💥 Upload failed!\n\nError: {task.error}"
+                text = f"❌ **{task.file_name}**\n\n💥 آپلود ناموفق بود!\n\nخطا: {task.error}"
             else:
-                text = f"📤 **{task.file_name}**\n\nStatus: {task.status}"
+                text = f"📤 **{task.file_name}**\n\nوضعیت: {task.status}"
 
             keyboard = []
             if task.status == "uploading":
                 keyboard.append([InlineKeyboardButton(
-                    "❌ Cancel", callback_data=f"cancel_{task.file_id}")])
+                    "❌ لغو", callback_data=f"cancel_{task.file_id}")])
             elif task.status == "completed":
                 keyboard.append([
                     InlineKeyboardButton(
-                        "📋 View in Drive", url=f"https://drive.google.com/file/d/{task.drive_file_id}/view"),
+                        "📋 مشاهده در درایو", url=f"https://drive.google.com/file/d/{task.drive_file_id}/view"),
                     InlineKeyboardButton(
-                        "🗑️ Delete", callback_data=f"delete_{task.drive_file_id}")
+                        "🗑️ حذف", callback_data=f"delete_{task.drive_file_id}")
                 ])
 
             reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
 
-            # This would need the application context to update the message
-            # For now, we'll just log the progress
+            # ثبت پیشرفت در لاگ
             logger.info(
-                f"Progress update for {task.file_name}: {task.progress}%")
+                f"به‌روزرسانی پیشرفت برای {task.file_name}: {task.progress}%")
 
         except Exception as e:
-            logger.error(f"Failed to update progress message: {e}")
+            logger.error(f"خطا در به‌روزرسانی پیام پیشرفت: {e}")
 
     async def process_upload_queue(self):
-        """Process the upload queue"""
+        """پردازش صف آپلود"""
         while True:
             if self.upload_queue:
                 task = self.upload_queue.pop(0)
                 self.active_uploads[task.user_id] = task
 
-                # Download file from Telegram
+                # دانلود فایل از تلگرام
                 file_path = await self.download_telegram_file(task)
                 if not file_path:
                     task.status = "failed"
-                    task.error = "Failed to download file from Telegram"
+                    task.error = "دانلود فایل از تلگرام ناموفق بود"
                     continue
 
-                # Upload to Google Drive
+                # آپلود به گوگل درایو
                 if task.file_size > 20 * 1024 * 1024:  # 20MB
                     success = await self.upload_file_chunked(task, file_path)
                 else:
                     success = await self.upload_file_direct(task, file_path)
 
-                # Clean up
+                # پاکسازی فایل موقت
                 if os.path.exists(file_path):
                     os.remove(file_path)
 
@@ -226,90 +224,88 @@ class WOWDriveBot:
             await asyncio.sleep(1)
 
     async def download_telegram_file(self, task: UploadTask) -> Optional[str]:
-        """Download file from Telegram to local storage"""
+        """دانلود فایل از تلگرام در حافظه محلی"""
         try:
-            # This is a simplified version - in production you'd use the Telegram Bot API
-            # to actually download the file
             file_path = os.path.join(
                 UPLOAD_FOLDER, f"{task.file_id}_{task.file_name}")
 
-            # Create a dummy file for testing
+            # ایجاد فایل آزمایشی
             with open(file_path, 'wb') as f:
                 f.write(b'0' * task.file_size)
 
             return file_path
         except Exception as e:
-            logger.error(f"Failed to download file {task.file_name}: {e}")
+            logger.error(f"خطا در دانلود فایل {task.file_name}: {e}")
             return None
 
 
-# Initialize bot
+# مقداردهی اولیه ربات
 bot = WOWDriveBot()
 
-# Command handlers
+# مدیریت دستورات
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /start command"""
+    """مدیریت دستور /start"""
     welcome_text = """
-🤖 **WOWDrive Bot** — Upload from Telegram to Google Drive
+🤖 **ربات WOWDrive** — آپلود از تلگرام به گوگل درایو
 
-📋 **Commands**
-• /start — Start the bot
-• /help — Show this help message
-• /login — Connect your Google Drive account
-• /stat — Show your Drive storage usage
-• /list — List your recent files
-• /rename <fileId> <newName> — Rename a file
-• /remove <fileId> — Delete a file
-• /privacy — Privacy Policy & Terms
+📋 **دستورات**
+• /start — شروع ربات
+• /help — نمایش این راهنما
+• /login — اتصال به حساب گوگل درایو
+• /stat — نمایش میزان فضای مصرفی درایو
+• /list — لیست فایل‌های اخیر شما
+• /rename <شناسه فایل> <نام جدید> — تغییر نام فایل
+• /remove <شناسه فایل> — حذف فایل
+• /privacy — قوانین و حریم خصوصی
 
-📤 **Upload Files**
-• Send any document, photo, or video to upload to Drive
-• Small files (≤20MB): Direct upload
-• Large files (>20MB): Chunked upload with progress tracking
-• Use buttons to cancel or view progress
+📤 **آپلود فایل‌ها**
+• هر سند، عکس یا ویدیویی بفرستید تا در درایو آپلود شود
+• فایل‌های کوچک (≤۲۰ مگابایت): آپلود مستقیم
+• فایل‌های بزرگ (>۲۰ مگابایت): آپلود تکه‌تکه با نمایش پیشرفت
+• از دکمه‌ها برای لغو یا مشاهده پیشرفت استفاده کنید
 
-⚡️ **Upload Process**
-1️⃣ Request added to the queue!
-2️⃣ Starting to upload...
-3️⃣ Progress updates every 20 seconds
-4️⃣ Upload completed!
+⚡️ **روند آپلود**
+1️⃣ درخواست به صف اضافه شد!
+2️⃣ شروع آپلود...
+3️⃣ به‌روزرسانی پیشرفت هر ۲۰ ثانیه
+4️⃣ آپلود با موفقیت انجام شد!
 """
     await update.message.reply_text(welcome_text, parse_mode=ParseMode.MARKDOWN)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /help command"""
+    """مدیریت دستور /help"""
     await start_command(update, context)
 
 
 async def login_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /login command"""
+    """مدیریت دستور /login"""
     user_id = update.effective_user.id
 
     auth_url = await bot.get_auth_url(user_id)
     if auth_url:
         message = f"""
-🔐 **Google Drive Authentication**
+🔐 **احراز هویت گوگل درایو**
 
-Click the link below to authorize the bot:
+برای مجوزدهی به ربات روی لینک زیر کلیک کنید:
 {auth_url}
 
-After authorization, you'll be redirected to complete the setup.
+پس از مجوزدهی، به صفحه تکمیل تنظیمات هدایت می‌شوید.
 """
         await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
     else:
-        await update.message.reply_text("❌ Failed to start authentication. Please try again later.")
+        await update.message.reply_text("❌ شروع احراز هویت ناموفق بود. لطفاً بعداً دوباره تلاش کنید.")
 
 
 async def stat_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /stat command"""
+    """مدیریت دستور /stat"""
     user_id = update.effective_user.id
 
     storage_info = await bot.get_storage_info(user_id)
     if not storage_info:
-        await update.message.reply_text("❌ Please authenticate first with /login")
+        await update.message.reply_text("❌ لطفاً ابتدا با /login احراز هویت کنید")
         return
 
     total = int(storage_info.get('limit', 0))
@@ -323,48 +319,48 @@ async def stat_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     usage_percent = (used / total * 100) if total > 0 else 0
 
     message = f"""
-📊 **Drive Storage Usage**
+📊 **میزان مصرف فضای درایو**
 
-💾 **Total Space:** {total_gb:.2f} GB
-📈 **Used:** {used_gb:.2f} GB ({usage_percent:.1f}%)
-🆓 **Free:** {free_gb:.2f} GB
+💾 **فضای کل:** {total_gb:.2f} گیگابایت
+📈 **مصرف شده:** {used_gb:.2f} گیگابایت ({usage_percent:.1f}%)
+🆓 **فضای خالی:** {free_gb:.2f} گیگابایت
 """
     await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
 
 
 async def list_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /list command"""
+    """مدیریت دستور /list"""
     user_id = update.effective_user.id
 
     files = await bot.list_recent_files(user_id)
     if not files:
-        await update.message.reply_text("❌ Please authenticate first with /login")
+        await update.message.reply_text("❌ لطفاً ابتدا با /login احراز هویت کنید")
         return
 
     if not files:
-        await update.message.reply_text("📁 No files found in your Drive")
+        await update.message.reply_text("📁 فایلی در درایو شما یافت نشد")
         return
 
-    message = "📁 **Recent Files:**\n\n"
+    message = "📁 **فایل‌های اخیر:**\n\n"
     for i, file in enumerate(files[:10], 1):
         size = int(file.get('size', 0))
         size_mb = size / (1024**2) if size > 0 else 0
-        created = file.get('createdTime', 'Unknown')
+        created = file.get('createdTime', 'ناشناخته')
 
         message += f"{i}. **{file['name']}**\n"
-        message += f"   📏 {size_mb:.1f} MB | 🆔 `{file['id']}`\n"
+        message += f"   📏 {size_mb:.1f} مگابایت | 🆔 `{file['id']}`\n"
         message += f"   📅 {created[:10]}\n\n"
 
     await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
 
 
 async def rename_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /rename command"""
+    """مدیریت دستور /rename"""
     user_id = update.effective_user.id
     args = context.args
 
     if len(args) < 2:
-        await update.message.reply_text("Usage: /rename <fileId> <newName>")
+        await update.message.reply_text("طریقه استفاده: /rename <شناسه فایل> <نام جدید>")
         return
 
     file_id = args[0]
@@ -372,79 +368,79 @@ async def rename_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     manager = bot.get_drive_manager(user_id)
     if not manager.service:
-        await update.message.reply_text("❌ Please authenticate first with /login")
+        await update.message.reply_text("❌ لطفاً ابتدا با /login احراز هویت کنید")
         return
 
     success = manager.rename_file(file_id, new_name)
     if success:
-        await update.message.reply_text(f"✅ File renamed to '{new_name}'")
+        await update.message.reply_text(f"✅ نام فایل به '{new_name}' تغییر یافت")
     else:
-        await update.message.reply_text("❌ Failed to rename file")
+        await update.message.reply_text("❌ تغییر نام فایل ناموفق بود")
 
 
 async def remove_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /remove command"""
+    """مدیریت دستور /remove"""
     user_id = update.effective_user.id
     args = context.args
 
     if not args:
-        await update.message.reply_text("Usage: /remove <fileId>")
+        await update.message.reply_text("طریقه استفاده: /remove <شناسه فایل>")
         return
 
     file_id = args[0]
 
     manager = bot.get_drive_manager(user_id)
     if not manager.service:
-        await update.message.reply_text("❌ Please authenticate first with /login")
+        await update.message.reply_text("❌ لطفاً ابتدا با /login احراز هویت کنید")
         return
 
     success = manager.delete_file(file_id)
     if success:
-        await update.message.reply_text("✅ File deleted successfully")
+        await update.message.reply_text("✅ فایل با موفقیت حذف شد")
     else:
-        await update.message.reply_text("❌ Failed to delete file")
+        await update.message.reply_text("❌ حذف فایل ناموفق بود")
 
 
 async def privacy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /privacy command"""
+    """مدیریت دستور /privacy"""
     privacy_text = """
-🔒 **Privacy Policy & Terms**
+🔒 **قوانین و حریم خصوصی**
 
-**Data Collection:**
-• We only store your Google Drive authentication tokens
-• No file content is stored on our servers
-• Files are uploaded directly to your Google Drive
+**جمع‌آوری اطلاعات:**
+• ما فقط توکن‌های احراز هویت گوگل درایو شما را ذخیره می‌کنیم
+• هیچ محتوای فایلی روی سرورهای ما ذخیره نمی‌شود
+• فایل‌ها مستقیماً به گوگل درایو شما آپلود می‌شوند
 
-**Data Usage:**
-• Authentication tokens are used only for file operations
-• No data is shared with third parties
-• You can revoke access anytime from Google Account settings
+**استفاده از اطلاعات:**
+• توکن‌های احراز هویت فقط برای عملیات فایل استفاده می‌شوند
+• اطلاعات با هیچ شخص ثالثی به اشتراک گذاشته نمی‌شود
+• می‌توانید هر زمان از تنظیمات حساب گوگل دسترسی را لغو کنید
 
-**Terms of Service:**
-• Use responsibly and in accordance with Google Drive ToS
-• We're not responsible for your files or their content
-• Service availability is not guaranteed
+**شرایط خدمات:**
+• مسئولانه و مطابق با شرایط خدمات گوگل درایو استفاده کنید
+• ما مسئول فایل‌ها یا محتوای آنها نیستیم
+• در دسترس بودن سرویس تضمین نمی‌شود
 
-**Contact:**
-For questions, contact the bot administrator.
+**تماس:**
+برای سوالات، با مدیر ربات تماس بگیرید.
 """
     await update.message.reply_text(privacy_text, parse_mode=ParseMode.MARKDOWN)
 
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle document uploads"""
+    """مدیریت آپلود سند"""
     user_id = update.effective_user.id
     document = update.message.document
 
     if not document:
         return
 
-    # Check file size
+    # بررسی حجم فایل
     if document.file_size > MAX_FILE_SIZE:
-        await update.message.reply_text(f"❌ File too large! Maximum size is {MAX_FILE_SIZE // (1024**3)}GB")
+        await update.message.reply_text(f"❌ حجم فایل خیلی زیاد است! حداکثر حجم {MAX_FILE_SIZE // (1024**3)} گیگابایت است")
         return
 
-    # Create upload task
+    # ایجاد تسک آپلود
     task = UploadTask(
         user_id=user_id,
         file_id=document.file_id,
@@ -455,25 +451,25 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     bot.upload_queue.append(task)
 
-    # Send initial message
-    message = f"📤 **{task.file_name}**\n\n⏳ Request added to the queue!"
+    # ارسال پیام اولیه
+    message = f"📤 **{task.file_name}**\n\n⏳ درخواست به صف اضافه شد!"
     await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle photo uploads"""
+    """مدیریت آپلود عکس"""
     user_id = update.effective_user.id
-    photo = update.message.photo[-1]  # Get highest resolution
+    photo = update.message.photo[-1]  # دریافت بالاترین کیفیت
 
     if not photo:
         return
 
-    # Check file size
+    # بررسی حجم فایل
     if photo.file_size > MAX_FILE_SIZE:
-        await update.message.reply_text(f"❌ File too large! Maximum size is {MAX_FILE_SIZE // (1024**3)}GB")
+        await update.message.reply_text(f"❌ حجم فایل خیلی زیاد است! حداکثر حجم {MAX_FILE_SIZE // (1024**3)} گیگابایت است")
         return
 
-    # Create upload task
+    # ایجاد تسک آپلود
     task = UploadTask(
         user_id=user_id,
         file_id=photo.file_id,
@@ -484,25 +480,25 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     bot.upload_queue.append(task)
 
-    # Send initial message
-    message = f"📤 **{task.file_name}**\n\n⏳ Request added to the queue!"
+    # ارسال پیام اولیه
+    message = f"📤 **{task.file_name}**\n\n⏳ درخواست به صف اضافه شد!"
     await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
 
 
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle video uploads"""
+    """مدیریت آپلود ویدیو"""
     user_id = update.effective_user.id
     video = update.message.video
 
     if not video:
         return
 
-    # Check file size
+    # بررسی حجم فایل
     if video.file_size > MAX_FILE_SIZE:
-        await update.message.reply_text(f"❌ File too large! Maximum size is {MAX_FILE_SIZE // (1024**3)}GB")
+        await update.message.reply_text(f"❌ حجم فایل خیلی زیاد است! حداکثر حجم {MAX_FILE_SIZE // (1024**3)} گیگابایت است")
         return
 
-    # Create upload task
+    # ایجاد تسک آپلود
     task = UploadTask(
         user_id=user_id,
         file_id=video.file_id,
@@ -513,13 +509,13 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     bot.upload_queue.append(task)
 
-    # Send initial message
-    message = f"📤 **{task.file_name}**\n\n⏳ Request added to the queue!"
+    # ارسال پیام اولیه
+    message = f"📤 **{task.file_name}**\n\n⏳ درخواست به صف اضافه شد!"
     await update.message.reply_text(message, parse_mode=ParseMode.MARKDOWN)
 
 
 async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle callback queries from inline keyboards"""
+    """مدیریت درخواست‌های دکمه‌های شیشه‌ای"""
     query = update.callback_query
     await query.answer()
 
@@ -527,30 +523,30 @@ async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TY
 
     if data.startswith("cancel_"):
         file_id = data.replace("cancel_", "")
-        # Handle cancel logic
-        await query.edit_message_text("❌ Upload cancelled")
+        # مدیریت لغو آپلود
+        await query.edit_message_text("❌ آپلود لغو شد")
 
     elif data.startswith("delete_"):
         drive_file_id = data.replace("delete_", "")
-        # Handle delete logic
-        await query.edit_message_text("🗑️ File deleted from Drive")
+        # مدیریت حذف فایل
+        await query.edit_message_text("🗑️ فایل از درایو حذف شد")
 
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle errors"""
-    logger.error(f"Update {update} caused error {context.error}")
+    """مدیریت خطاها"""
+    logger.error(f"به‌روزرسانی {update} باعث خطای {context.error} شد")
 
 
 def start_bot():
-    """Start the Telegram bot"""
+    """شروع ربات تلگرام"""
     if not BOT_TOKEN:
-        logger.error("BOT_TOKEN not found in environment variables")
+        logger.error("BOT_TOKEN در متغیرهای محیطی یافت نشد")
         return
 
-    # Create application
+    # ایجاد برنامه
     application = Application.builder().token(BOT_TOKEN).build()
 
-    # Add handlers
+    # اضافه کردن هندلرها
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("login", login_command))
@@ -560,18 +556,22 @@ def start_bot():
     application.add_handler(CommandHandler("remove", remove_command))
     application.add_handler(CommandHandler("privacy", privacy_command))
 
-    # Message handlers
+    # هندلرهای پیام
     application.add_handler(MessageHandler(
         filters.Document.ALL, handle_document))
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_handler(MessageHandler(filters.VIDEO, handle_video))
 
-    # Callback query handler
+    # هندلر دکمه‌های شیشه‌ای
     application.add_handler(CallbackQueryHandler(handle_callback_query))
 
-    # Error handler
+    # هندلر خطا
     application.add_error_handler(error_handler)
 
-    # Start the bot
-    logger.info("Starting WOWDrive Bot...")
+    # شروع ربات
+    logger.info("در حال شروع ربات WOWDrive...")
     application.run_polling()
+
+
+if __name__ == "__main__":
+    start_bot()
